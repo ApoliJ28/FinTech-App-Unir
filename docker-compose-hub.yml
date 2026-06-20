@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # Capa de Datos: PostgreSQL
+  db:
+    # Imagen oficial de PostgreSQL con la etiqueta de la versión Alpine para una imagen más ligera
+    image: postgres:15-alpine
+    container_name: fintech-db # Nombre del contenedor
+    restart: always
+    environment:
+      POSTGRES_USER: fintech_user
+      POSTGRES_PASSWORD: fintech_pass123
+      POSTGRES_DB: fintech_db
+    ports:
+      - "5432:5432" # Puerto para acceso externo 5432 default de postgresql
+    volumes:
+      - postgres_data:/var/lib/postgresql/data # Volumen para persistencia de datos
+    networks:
+      - fintech-network # Red personalizada para aislar la base de datos y permitir comunicación interna con otros servicios
+
+  # Capa de Lógica: Backend Node.js
+  backend:
+    image: apolidev/fintech-app-backend # Imagen en dockerhub construida a partir del Dockerfile en la carpeta backend del proyecto
+    container_name: fintech-api # Nombre del contenedor
+    restart: always
+    ports:
+      - "3001:3001" # Puerto para acceso externo, el backend escuchará en el puerto 3001
+    environment:
+      - DB_HOST=db
+      - DB_USER=fintech_user
+      - DB_PASSWORD=fintech_pass123
+      - DB_NAME=fintech_db
+      - DB_PORT=5432
+    depends_on:
+      - db # Asegura que la base de datos esté lista antes de iniciar el backend
+    networks:
+      - fintech-network # Red personalizada para aislar la base de datos y permitir comunicación interna con otros servicios
+
+  # Capa de Presentación: Frontend React + Nginx
+  frontend:
+    image: apolidev/fintech-app-frontend # Imagen en dockerhub construida a partir del Dockerfile en la carpeta frontend del proyecto
+    container_name: fintech-web # Nombre del contenedor
+    restart: always
+    ports:
+      - "80:80" # Puerto para acceso externo, el frontend se servirá en el puerto 80
+    depends_on:
+      - backend # Asegura que el backend esté listo antes de iniciar el frontend
+    networks:
+      - fintech-network # Red personalizada para aislar la base de datos y permitir comunicación interna con otros servicios
+
+# Definición de Volúmenes para persistencia
+volumes:
+  postgres_data:
+
+# Definición de la Red para aislamiento y comunicación interna
+networks:
+  fintech-network:
+    driver: bridge
