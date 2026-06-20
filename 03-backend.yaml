@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fintech-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fintech-backend
+  template:
+    metadata:
+      labels:
+        app: fintech-backend
+    spec:
+      containers:
+      - name: backend
+        image: apolidev/fintech-app-backend:latest # Imagen de Docker Hub
+        ports:
+        - containerPort: 3001
+        envFrom:
+        - configMapRef:
+            name: fintech-config
+        env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: POSTGRES_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-credentials
+              key: POSTGRES_PASSWORD
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  annotations:
+    # Esta anotación le dice a AWS que cree un Network Load Balancer (más rápido)
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb" 
+spec:
+  type: LoadBalancer # Accesible desde internet para el navegador y se toma la url para configurar el frotend
+  selector:
+    app: fintech-backend
+  ports:
+    - protocol: TCP
+      port: 3001
+      targetPort: 3001
+  
